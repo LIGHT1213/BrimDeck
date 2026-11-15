@@ -29,8 +29,9 @@
 - 验证签名的 JSON 往返、错误签名、错误发布者、说明/版本/文件/哈希篡改、重启后待安装清单篡改，以及缺少可信公钥时禁止下载。
 - 使用真实本机命名管道检验不读取客户端的写入超时与后续正常响应。
 - 检查 Windows 目标的整库编译、PowerShell 语法、GitHub 工作流语法，并查询 NuGet 漏洞源。
-- 当前执行机为 Linux。原完整测试在依赖 Windows 文件属性的 Apple Music 缓存用例处失败；没有将其记为通过。WPF 运行、Windows 管道实现、安装/卸载、便携更新及真实硬件测试仍须执行 Windows 工作流。工作流已包含这些可在 hosted runner 上运行的检查。
-- 当前 GitHub 集成拒绝代码写入，返回 403；在用户完成后续授权前，代码修改保留在本地提交，不能声称已上传或已生成 GitHub Actions 产物。
+- Windows 工作流已在提交 `8b20ccec96f73f5fe7d4904f4bc678967e087092` 上通过：核心 2,829 项检查、媒体 92 项检查、Windows hosted 子集 89 项检查，以及安装升级、卸载、免安装更新和失败回滚验证。本地 Linux 上无法完整验证的 Windows 文件属性与 WPF 行为已交由 Windows runner 验证。真实 GPU、设备电量、驱动及 SYSTEM 硬件服务未在实体机上测试。
+- 用户重新授权 GitHub 后，修复已推送至 fork 的 `main`，并由 GitHub CLI 启动并完成 [Windows 构建与验证 #43695491432](https://github.com/LIGHT1213/BrimDeck/actions/runs/43695491432)。[下载安装版与免安装包](https://github.com/LIGHT1213/BrimDeck/actions/runs/43695491432/artifacts/14154325811)，Actions 产物保留 30 天。
+- 产物下载后已验证 GitHub artifact digest、`SHA256SUMS.txt`、更新清单中的大小及哈希、两层 ZIP 完整性和 489 项免安装文件清单。安装程序、主程序和传感器程序均为 Windows x64 PE；程序内嵌更新仓库为 `LIGHT1213/BrimDeck`，传感器哈希与实际文件一致。此次构建未配置更新签名公钥，自动安装更新关闭，使用手动更新。
 
 ## 使用与残余风险
 

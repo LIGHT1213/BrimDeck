@@ -32,7 +32,9 @@ GitHub Actions 构建会将当前仓库名写入程序，更新、传感器下�
 
 ## 本次修复的上传与运行
 
-本次修改先保存在云工作区 `/workspace/work/BrimDeck` 的本地 Git 提交中。GitHub 集成返回 `Resource not accessible by integration` / 403 时，需在 ChatGPT 的 GitHub 连接中把 `LIGHT1213/BrimDeck` 加入授权仓库，授予 Contents 与 Workflows 写入及 Actions 运行权限。
+本次修复已推送到 `LIGHT1213/BrimDeck` 的 `main`，Windows 构建与验证已通过，结果见[代码复审与修复记录](security-review.md)。已有本地 clone 可执行 `git pull --ff-only origin main` 获取修复，再按上面的命令重新构建。
+
+GitHub 集成返回 `Resource not accessible by integration` / 403 时，需在 ChatGPT 的 GitHub 连接中把 `LIGHT1213/BrimDeck` 加入授权仓库，授予 Contents 与 Workflows 写入及 Actions 运行权限。
 
 也可以在你自己的终端进入含本次修复的仓库后，使用 GitHub CLI 的网页登录：
 
@@ -48,8 +50,6 @@ gh run download RUN_ID --repo LIGHT1213/BrimDeck --dir artifacts/download
 ```
 
 如果 `gh` 提示认证由 `GH_TOKEN` 或 `GITHUB_TOKEN` 管理，先在当前终端移除旧的只读环境变量，再网页登录；不要在聊天里发送令牌。PowerShell 可运行 `Remove-Item Env:GH_TOKEN, Env:GITHUB_TOKEN -ErrorAction SilentlyContinue`；Bash 可运行 `unset GH_TOKEN GITHUB_TOKEN`。
-
-如果需要把云工作区的提交移到本机，下载本次交付的 `BrimDeck-review-fixes.bundle`，在原 clone 中执行 `git fetch <bundle的路径> main:security-review`，然后执行 `git switch security-review`。检查后用 `git push origin security-review:main` 上传，随后运行上面的构建命令。无需强制推送或清理现有分支。
 
 无需配置签名密钥即可生成、安装和运行 exe；没有可信公钥时，应用只支持手动更新。
 
