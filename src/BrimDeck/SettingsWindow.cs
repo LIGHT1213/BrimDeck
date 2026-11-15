@@ -1182,8 +1182,8 @@ public sealed partial class SettingsWindow : Window, IKeepsAppFonts
         version.Children.Add(notes);
         Group(Row(Loc.T("当前版本", "Current version"),version),
             Row(Loc.T("开源许可证", "License"),TextLine("Apache License 2.0",12,TextSecondary)),
-            Row(Loc.T("项目主页", "Homepage"),Link("GitHub ↗","https://github.com/MoFeng2223/BrimDeck")),
-            Row(Loc.T("问题与建议", "Issues and suggestions"),Link(Loc.T("提交反馈 ↗", "Send feedback ↗"),"https://github.com/MoFeng2223/BrimDeck/issues")));
+            Row(Loc.T("项目主页", "Homepage"),Link("GitHub ↗",Updates.GitHubUpdates.RepositoryUrl)),
+            Row(Loc.T("问题与建议", "Issues and suggestions"),Link(Loc.T("提交反馈 ↗", "Send feedback ↗"),Updates.GitHubUpdates.RepositoryUrl + "/issues")));
     }
 
     // External links are plain text, so their right edge lines up with the values in the rows above.

@@ -206,6 +206,8 @@ QQ group: 1132738200
 
 ## Contributing
 
+To build an installer exe and a portable Windows application in your fork with GitHub CLI, see the [Windows build guide (Chinese)](docs/zh-CN/build.md).
+
 You are welcome to report problems, suggest features or ask for more tools, players and devices in [Issues](https://github.com/MoFeng2223/BrimDeck/issues), and to contribute through pull requests.
 
 - Do not open pull requests against `main`:

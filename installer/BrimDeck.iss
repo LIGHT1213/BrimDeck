@@ -46,6 +46,9 @@
 #ifndef Compression
   #define Compression "lzma2/max"
 #endif
+#ifndef RepositoryUrl
+  #define RepositoryUrl "https://github.com/MoFeng2223/BrimDeck"
+#endif
 #define UninstallKey "Software\Microsoft\Windows\CurrentVersion\Uninstall\{" + AppId + "}_is1"
 
 [Setup]
@@ -54,9 +57,9 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher=MoFeng2223
-AppPublisherURL=https://github.com/MoFeng2223/BrimDeck
-AppSupportURL=https://github.com/MoFeng2223/BrimDeck/issues
-AppUpdatesURL=https://github.com/MoFeng2223/BrimDeck/releases
+AppPublisherURL={#RepositoryUrl}
+AppSupportURL={#RepositoryUrl}/issues
+AppUpdatesURL={#RepositoryUrl}/releases
 AppCopyright=Copyright (C) MoFeng2223
 VersionInfoVersion={#FileVersion}
 UninstallDisplayName={#AppName}

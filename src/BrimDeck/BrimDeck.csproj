@@ -25,6 +25,8 @@
     <ApplicationIcon>Assets\BrimDeck.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
+    <BrimDeckRepository Condition="'$(BrimDeckRepository)' == '' and '$(GITHUB_REPOSITORY)' != ''">$(GITHUB_REPOSITORY)</BrimDeckRepository>
+    <BrimDeckRepository Condition="'$(BrimDeckRepository)' == ''">MoFeng2223/BrimDeck</BrimDeckRepository>
     <!-- A panel that mostly sits idle: no background collection thread, and a collector that compacts and returns memory rather
          than keeping room to grow into (see App.Memory.cs). -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
@@ -38,6 +40,11 @@
   </ItemGroup>
 
   <Import Project="ReleaseVersion.targets" />
+
+  <ItemGroup>
+    <!-- Fork builds must read updates and sensor downloads from the repository that produced them. -->
+    <AssemblyMetadata Include="UpdateRepository" Value="$(BrimDeckRepository)" />
+  </ItemGroup>
 
   <!-- The release build publishes the sensor service first and passes its SHA-256 here: the copy downloaded when the user turns
        enhanced sensors on must match it (Native.SensorSetup). A build without it uses BrimDeck.Sensors.exe beside BrimDeck.exe. -->

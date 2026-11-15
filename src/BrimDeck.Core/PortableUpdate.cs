@@ -71,7 +71,7 @@ public static class PortableUpdate
         foreach (var file in incoming)
             if (!File.Exists(Path.Combine(source, file))) throw new InvalidDataException("The portable package is missing " + file);
         var current = IsPortable(target) ? Files(target) : [];
-        foreach (var leftover in Directory.GetDirectories(target, BackupPrefix + "*")) TryDeleteTree(leftover);
+        // A previous rollback may have kept files it could not restore. Never discard those recovery copies here.
         var backup = Path.Combine(target, BackupPrefix + Guid.NewGuid().ToString("N"));
         var moved = new List<string>(); var copied = new List<string>();
         void MoveAside(string file)
@@ -87,20 +87,31 @@ public static class PortableUpdate
             foreach (var file in current) MoveAside(file);
             // A file of the new package that the old list did not name is kept aside too, so a failure can put it back.
             foreach (var file in incoming) if (!moved.Contains(file, StringComparer.OrdinalIgnoreCase)) MoveAside(file);
+            // A directory containing only old package files may become a file. Unlisted user files keep it nonempty.
+            RemoveEmptyFolders(target, moved);
             foreach (var file in incoming)
             {
                 var path = Path.Combine(target, file);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                File.Copy(Path.Combine(source, file), path); copied.Add(file);
+                copied.Add(file); // Also clean up a partial file if Copy fails.
+                File.Copy(Path.Combine(source, file), path);
             }
         }
-        catch
+        catch (Exception error)
         {
             foreach (var file in copied) TryDelete(Path.Combine(target, file));
+            // Remove newly created empty folders before restoring an old file at the same path.
+            RemoveEmptyFolders(target, incoming);
+            bool restored = true;
             foreach (var file in moved)
-                try { File.Move(Path.Combine(backup, file), Path.Combine(target, file), true); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-            RemoveEmptyFolders(target, copied);
+                try
+                {
+                    var path = Path.Combine(target, file);
+                    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                    File.Move(Path.Combine(backup, file), path, true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { restored = false; }
+            if (!restored) throw new IOException("The update failed and some old files could not be restored. Recovery files remain in " + backup, error);
             TryDeleteTree(backup);
             throw;
         }

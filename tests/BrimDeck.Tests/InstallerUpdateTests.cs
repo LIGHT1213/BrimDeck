@@ -103,11 +103,38 @@ internal static class InstallerUpdateTests
         check("a missing beta channel leaves the release", (await betaBackend.CheckAsync(true, CancellationToken.None))?.Version == "0.2.0" && server.BetaRequests == 3);
         server.BetaManifest = "broken";
         check("an unreadable beta manifest leaves the release", (await betaBackend.CheckAsync(true, CancellationToken.None))?.Version == "0.2.0");
+
+        server.BetaManifest = (manifest with { Version = "0.3.0-beta.1" }).ToJson();
+        server.Manifest = null;
+        check("a repository with only a beta release can offer beta updates", (await betaBackend.CheckAsync(true, CancellationToken.None))?.Version == "0.3.0-beta.1");
+        server.Manifest = "broken";
+        check("an unreadable release manifest does not hide a healthy beta channel", (await betaBackend.CheckAsync(true, CancellationToken.None))?.Version == "0.3.0-beta.1");
+        server.Manifest = null; server.BetaManifest = null;
+        bool unavailable = false;
+        try { await betaBackend.CheckAsync(true, CancellationToken.None); }
+        catch (UpdateCheckException ex) when (ex.StatusCode == HttpStatusCode.NotFound) { unavailable = true; }
+        check("two unavailable channels still report a failed check", unavailable);
+        server.ManifestStatus = HttpStatusCode.TooManyRequests;
+        bool limited = false;
+        try { await betaBackend.CheckAsync(true, CancellationToken.None); }
+        catch (UpdateCheckException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests && ex.RetryAfter == TimeSpan.FromMinutes(2)) { limited = true; }
+        check("when both channels fail the stable channel's rate limit and retry delay survive", limited);
+        server.ManifestStatus = HttpStatusCode.OK;
+        var beforeStableOnly = server.BetaRequests; unavailable = false;
+        try { await betaBackend.CheckAsync(false, CancellationToken.None); }
+        catch (UpdateCheckException ex) when (ex.StatusCode == HttpStatusCode.NotFound) { unavailable = true; }
+        check("a stable-only check never opts into a beta when the stable channel is unavailable", unavailable && server.BetaRequests == beforeStableOnly);
+        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+        var betaRequests = server.BetaRequests; bool stopped = false;
+        try { await betaBackend.CheckAsync(true, cancelled.Token); }
+        catch (OperationCanceledException) { stopped = true; }
+        check("caller cancellation does not fall through to the beta channel", stopped && server.BetaRequests == betaRequests);
     }
 
     private sealed class ReleaseServer : HttpMessageHandler
     {
-        public string Manifest { get; set; } = "";
+        public string? Manifest { get; set; } = "";
+        public HttpStatusCode ManifestStatus { get; set; } = HttpStatusCode.OK;
         public byte[] Installer { get; set; } = [];
         // Null answers the beta manifest with 404, as before the first beta.
         public string? BetaManifest { get; set; }
@@ -115,9 +142,16 @@ internal static class InstallerUpdateTests
         public int BetaRequests { get; private set; }
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Requests++;
+            if (request.RequestUri == ManifestUri && ManifestStatus != HttpStatusCode.OK)
+            {
+                var response = new HttpResponseMessage(ManifestStatus);
+                response.Headers.RetryAfter = new(TimeSpan.FromMinutes(2));
+                return Task.FromResult(response);
+            }
             if (request.RequestUri == BetaManifestUri) BetaRequests++;
-            HttpContent? content = request.RequestUri == ManifestUri ? new StringContent(Manifest)
+            HttpContent? content = request.RequestUri == ManifestUri && Manifest is not null ? new StringContent(Manifest)
                 : request.RequestUri == BetaManifestUri && BetaManifest is not null ? new StringContent(BetaManifest)
                 : request.RequestUri?.AbsolutePath == "/v0.2.0/BrimDeck-0.2.0-Setup.exe" ? new ByteArrayContent(Installer) : null;
             return Task.FromResult(new HttpResponseMessage(content is null ? HttpStatusCode.NotFound : HttpStatusCode.OK) { Content = content ?? new StringContent("") });

@@ -1,0 +1,57 @@
+name: Build Windows executables
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build solution
+        run: |
+          dotnet build BrimDeck.sln -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
+      - name: Core tests
+        run: |
+          dotnet run --project tests/BrimDeck.Tests -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { throw 'Core tests failed.' }
+      - name: Media tests
+        run: |
+          dotnet run --project tests/BrimDeck.MediaTests -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { throw 'Media tests failed.' }
+      - name: Windows tests (hosted subset)
+        run: |
+          dotnet run --project tests/BrimDeck.WindowsTests -c Release --no-build -- --hosted
+          if ($LASTEXITCODE -ne 0) { throw 'Windows tests failed.' }
+      - name: Package installer and portable application
+        run: |
+          $version = (dotnet msbuild src/BrimDeck/BrimDeck.csproj -target:SetVersionFromReleaseNotes -getProperty:Version -nologo).Trim()
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+(-(alpha|beta)\.\d+)?$') { throw 'Could not determine the build version.' }
+          ./scripts/Publish-Release.ps1 -Version $version -Repository $env:GITHUB_REPOSITORY -BundleSensors
+          "Built BrimDeck $version for Windows x64 from $env:GITHUB_SHA. Download the installer or portable zip from this run's artifact." >> $env:GITHUB_STEP_SUMMARY
+      - name: Verify installer update and uninstall
+        run: ./scripts/Test-AppUpdate.ps1
+      - name: Verify portable update and rollback
+        run: ./scripts/Test-PortableUpdate.ps1
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: BrimDeck-Windows-x64-${{ github.sha }}
+          path: artifacts/releases/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

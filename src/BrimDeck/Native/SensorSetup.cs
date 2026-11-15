@@ -99,13 +99,16 @@ internal static class SensorSetup
         try
         {
             string exe = Path.Combine(staging, ExeName);
-            if (ExpectedSha256 is null)
+            string beside = Path.Combine(AppContext.BaseDirectory, ExeName);
+            if (ExpectedSha256 is null || File.Exists(beside))
             {
-                // A build without a release's hash (a developer's): the service built beside it.
-                string beside = Path.Combine(AppContext.BaseDirectory, ExeName);
+                // Developer builds and Actions packages ship the service beside the app. Packaged copies still verify
+                // the embedded hash here and again after copying to Program Files in the elevated process.
                 if (!File.Exists(beside)) throw new InvalidOperationException(Loc.T("本地编译的版本需要把 BrimDeck.Sensors.exe 放在 BrimDeck.exe 旁边",
                     "A local build needs BrimDeck.Sensors.exe beside BrimDeck.exe"));
                 File.Copy(beside, exe);
+                if (ExpectedSha256 is { } expected && Sha256(exe) != expected)
+                    throw new InvalidOperationException(Loc.T("传感器服务校验不符", "The sensor service did not check out"));
             }
             else await DownloadAsync(new Uri($"{Updates.GitHubUpdates.RepositoryUrl}/releases/download/v{ApplicationVersion.Current}/{ExeName}"), exe, ExpectedSha256, cancel);
             await DownloadAsync(new Uri(ModulesUrl), Path.Combine(staging, "modules.zip"), ModulesSha256, cancel);

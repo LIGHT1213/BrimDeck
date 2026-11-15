@@ -78,6 +78,7 @@ try
     ReleaseHistoryTests.Run(root, Check);
     await InstallerUpdateTests.Run(root, Check);
     await PortableUpdateTests.Run(root, Check);
+    PortableRollbackTests.Run(Path.Combine(root, "portable-rollback"), Check);
     SettingsMigrationTests.Run(root, Check);
     MemoryModeTests.Run(Check);
     OffPeakTests.Run(root, Check);

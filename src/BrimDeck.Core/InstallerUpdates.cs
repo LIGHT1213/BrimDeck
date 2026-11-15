@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -118,32 +119,42 @@ public sealed class InstallerUpdateBackend : IAppUpdateBackend
 
     public Task<AppRelease?> CheckAsync(CancellationToken cancellation) => CheckAsync(false, cancellation);
 
-    // With beta, the newer of the release and the newest beta is offered. The beta channel exists only once a beta has been
-    // published, so a beta manifest that cannot be read leaves the result of the release check.
+    // Check the channels independently: a repository can have a beta before its first stable release, or one channel can
+    // be temporarily unavailable. A working channel still offers its newest version; two failed channels report a failure.
     public async Task<AppRelease?> CheckAsync(bool beta, CancellationToken cancellation)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-        timeout.CancelAfter(TimeSpan.FromSeconds(30));
-        var manifest = await ReadManifestAsync(_manifest, timeout.Token).ConfigureAwait(false);
+        UpdateManifest? manifest = null;
+        Exception? releaseFailure = null;
+        try { manifest = await ReadManifestAsync(_manifest, cancellation).ConfigureAwait(false); }
+        catch (Exception ex) when (beta && _betaManifest is not null && ChannelFailed(ex, cancellation)) { releaseFailure = ex; }
         if (beta && _betaManifest is not null)
         {
             try
             {
-                var newest = await ReadManifestAsync(_betaManifest, timeout.Token).ConfigureAwait(false);
-                if (ApplicationVersion.Compare(newest.Version, manifest.Version) > 0) manifest = newest;
+                var newest = await ReadManifestAsync(_betaManifest, cancellation).ConfigureAwait(false);
+                if (manifest is null || ApplicationVersion.Compare(newest.Version, manifest.Version) > 0) manifest = newest;
             }
-            catch (Exception ex) when (ex is HttpRequestException or InvalidDataException or JsonException ||
-                ex is OperationCanceledException && !cancellation.IsCancellationRequested) { }
+            catch (Exception ex) when (ChannelFailed(ex, cancellation))
+            {
+                // Preserve the stable channel's status and Retry-After when neither channel can be read.
+                if (manifest is null) ExceptionDispatchInfo.Capture(releaseFailure!).Throw();
+            }
         }
-        _available = IsNewer(manifest) ? manifest : null;
+        cancellation.ThrowIfCancellationRequested();
+        _available = manifest is not null && IsNewer(manifest) ? manifest : null;
         return _available is null ? null : Describe(_available);
     }
 
+    private static bool ChannelFailed(Exception exception, CancellationToken cancellation) =>
+        !cancellation.IsCancellationRequested && (exception is HttpRequestException or InvalidDataException or JsonException or OperationCanceledException);
+
     private async Task<UpdateManifest> ReadManifestAsync(Uri uri, CancellationToken cancellation)
     {
-        using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellation).ConfigureAwait(false);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) throw new UpdateCheckException(response.StatusCode, RetryAfter(response.Headers.RetryAfter));
-        return UpdateManifest.Parse(await response.Content.ReadAsStringAsync(cancellation).ConfigureAwait(false));
+        return UpdateManifest.Parse(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false));
     }
 
     // Retry-After is either a number of seconds or a date.

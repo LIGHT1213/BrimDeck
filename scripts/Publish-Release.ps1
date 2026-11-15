@@ -2,7 +2,11 @@
 param(
     [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+(-(alpha|beta)\.\d+)?$')][string]$Version,
     [string]$ReleaseNotes,
-    [string]$OutputDirectory = 'artifacts/releases'
+    [string]$OutputDirectory = 'artifacts/releases',
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+$')]
+    [string]$Repository = $(if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { 'MoFeng2223/BrimDeck' }),
+    # Actions artifacts have no release tag to download sensors from; ship the service beside the app instead.
+    [switch]$BundleSensors
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -24,10 +28,11 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Sensor service publish failed.' }
     $sensors = Copy-Item -LiteralPath (Join-Path $sensorsPath 'BrimDeck.Sensors.exe') -Destination $outputPath -PassThru
     $sensorsSha256 = (Get-FileHash -LiteralPath $sensors.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    dotnet publish src/BrimDeck/BrimDeck.csproj -c Release -r win-x64 --self-contained true -p:Version=$Version -p:PublishSingleFile=false -p:SensorsSha256=$sensorsSha256 -o $publishPath
+    dotnet publish src/BrimDeck/BrimDeck.csproj -c Release -r win-x64 --self-contained true -p:Version=$Version -p:PublishSingleFile=false "-p:BrimDeckRepository=$Repository" -p:SensorsSha256=$sensorsSha256 -o $publishPath
     if ($LASTEXITCODE -ne 0) { throw 'Application publish failed.' }
+    if ($BundleSensors) { Copy-Item -LiteralPath $sensors.FullName -Destination $publishPath }
     $iscc = & (Join-Path $PSScriptRoot 'Get-InnoSetup.ps1')
-    & $iscc -qp "-dAppVersion=$Version" "-dSourceDir=$publishPath" "-o$outputPath" installer/BrimDeck.iss
+    & $iscc -qp "-dAppVersion=$Version" "-dSourceDir=$publishPath" "-dRepositoryUrl=https://github.com/$Repository" "-o$outputPath" installer/BrimDeck.iss
     if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
     $installer = Get-Item -LiteralPath (Join-Path $outputPath "BrimDeck-$Version-Setup.exe")
     $portable = New-PortablePackage -SourceDir $publishPath -Destination (Join-Path $outputPath "BrimDeck-$Version-Portable-x64.zip")

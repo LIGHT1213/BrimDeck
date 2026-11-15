@@ -210,6 +210,8 @@ BrimDeck 交流群：1132738200
 
 ## 参与开发
 
+在自己的 fork 中构建安装版 exe 或免安装版，见 [使用 GitHub CLI 构建 Windows 程序](docs/zh-CN/build.md)。
+
 欢迎通过 [Issues](https://github.com/MoFeng2223/BrimDeck/issues) 反馈问题、提出功能建议，或申请适配更多工具、播放器与设备，也欢迎提交 Pull Request 参与开发。
 
 - Pull Request 不要直接合入 `main`：
