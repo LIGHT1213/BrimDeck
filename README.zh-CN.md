@@ -1,3 +1,5 @@
+> 此 fork 已做安全加固：自定义脚本限配置站点同源请求，剪贴板记录默认关闭，禁用播放器调试与新 DLL 补丁，自动安装更新须验证签名。差异及验证范围见[代码复审与修复记录](docs/zh-CN/security-review.md)，构建方法见[Windows 构建指南](docs/zh-CN/build.md)。下方截图与部分功能介绍保留自上游。
+
 <div align="center">
 
 <a href="README.md"><img src="https://img.shields.io/badge/English-3A3A3C?style=for-the-badge" alt="English"></a>

@@ -18,7 +18,7 @@ internal static class InstallerUpdateTests
         var directory = Path.Combine(root, "installer-updates");
         var launches = new List<ProcessStartInfo>();
         InstallerUpdateBackend Backend(string version = "0.1.0", UpdateMode mode = UpdateMode.Installer) => new(http, ManifestUri,
-            (m, p) => new Uri($"https://updates.test/v{m.Version}/{p.File}"), version, directory, mode, start => { launches.Add(start); return true; });
+            (m, p) => new Uri($"https://updates.test/v{m.Version}/{p.File}"), version, directory, mode, start => { launches.Add(start); return true; }, requireSignature: false);
 
         var backend = Backend();
         var release = await backend.CheckAsync(CancellationToken.None);
@@ -93,7 +93,7 @@ internal static class InstallerUpdateTests
         check("the update service prepares and starts the installer", service.Stage == AppUpdateStage.Ready && service.PrepareRestart(() => { }) && launches.Count == 1);
 
         var betaBackend = new InstallerUpdateBackend(http, ManifestUri, (m, p) => new Uri($"https://updates.test/v{m.Version}/{p.File}"), "0.1.0",
-            Path.Combine(root, "installer-updates-beta"), UpdateMode.Installer, betaManifest: BetaManifestUri);
+            Path.Combine(root, "installer-updates-beta"), UpdateMode.Installer, betaManifest: BetaManifestUri, requireSignature: false);
         server.BetaManifest = (manifest with { Version = "0.3.0-beta.1" }).ToJson();
         check("without betas the beta channel is not read", (await betaBackend.CheckAsync(false, CancellationToken.None))?.Version == "0.2.0" && server.BetaRequests == 0);
         check("a beta newer than the release is offered", (await betaBackend.CheckAsync(true, CancellationToken.None))?.Version == "0.3.0-beta.1");

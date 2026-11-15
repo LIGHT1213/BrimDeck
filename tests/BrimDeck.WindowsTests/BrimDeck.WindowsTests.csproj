@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\BrimDeck.Sensors\PipeReply.cs" Link="PipeReply.cs" />
     <ProjectReference Include="..\..\src\BrimDeck.Core\BrimDeck.Core.csproj" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
     <Compile Include="..\..\src\BrimDeck\Native\PdhQuery.cs" Link="PdhQuery.cs" />

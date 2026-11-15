@@ -39,6 +39,8 @@ jobs:
           dotnet run --project tests/BrimDeck.WindowsTests -c Release --no-build -- --hosted
           if ($LASTEXITCODE -ne 0) { throw 'Windows tests failed.' }
       - name: Package installer and portable application
+        env:
+          BRIMDECK_UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY }}
         run: |
           $version = (dotnet msbuild src/BrimDeck/BrimDeck.csproj -target:SetVersionFromReleaseNotes -getProperty:Version -nologo).Trim()
           if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+(-(alpha|beta)\.\d+)?$') { throw 'Could not determine the build version.' }

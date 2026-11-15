@@ -47,6 +47,7 @@ internal static class LibcefFile
 
     public static void Write(string library, LibcefPatch profile, bool patch, bool elevated = false)
     {
+        if (patch) PlayerDebugging.DemandPermission();
         lock (Known) Known.Remove(library);
         try
         {

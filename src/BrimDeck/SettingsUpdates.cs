@@ -89,6 +89,8 @@ public sealed partial class SettingsWindow
         var title = TextLine("", inline ? 13 : 15, TextPrimary, FontWeights.SemiBold);
         AutomationProperties.SetLiveSetting(title, AutomationLiveSetting.Polite);
         var detail = TextLine("", 12, TextSecondary); detail.TextWrapping = TextWrapping.Wrap; detail.Margin = new Thickness(0, inline ? 3 : 7, 0, 0);
+        var trustNotice = TextLine(Loc.T("此构建未配置更新签名公钥，仅支持手动下载新版本。", "This build has no update signing key. Download new versions manually."), 12, TextSecondary);
+        trustNotice.TextWrapping = TextWrapping.Wrap;
         var notes = new StackPanel { Margin = new Thickness(0, 0, 10, 0) }; string? notesText = null;
         var noteScroll = new ScrollViewer { Content = notes, MaxHeight = 170, Margin = inline ? new Thickness(0, 2, 0, 16) : new Thickness(0, 16, 0, 0), Style = (Style)FindResource("SettingsScrollViewer") };
         var progress = new ProgressBar { Minimum = 0, Maximum = 100, Height = 5, Margin = inline ? new Thickness(0, 2, 0, 16) : new Thickness(0, 18, 0, 0), Style = (Style)FindResource("SettingsUpdateProgress") };
@@ -118,6 +120,7 @@ public sealed partial class SettingsWindow
             primary.Margin = new Thickness(8, 0, 0, 0); skip.Margin = new Thickness(0, 0, 8, 0); actions.Children.Add(skip); actions.Children.Add(check); actions.Children.Add(cancel); actions.Children.Add(primary);
             actions.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(actions, 1); header.Children.Add(actions);
             var panel = new StackPanel(); panel.Children.Add(header); panel.Children.Add(progress); panel.Children.Add(error); panel.Children.Add(noteScroll);
+            if (!Updates.GitHubUpdates.SignedUpdatesEnabled) panel.Children.Add(trustNotice);
             panel.Children.Add(new Border { Height = 1, Background = UI.Brush(_palette.RowDivider) });
             panel.Children.Add(Toggle(Loc.T("自动检查更新", "Check for updates automatically"), updates.AutoCheck, value => updates.AutoCheck = value));
             panel.Children.Add(Toggle(Loc.T("接收测试版更新", "Receive beta updates"), updates.Beta, value =>

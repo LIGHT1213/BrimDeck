@@ -6,7 +6,8 @@ param(
     [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+$')]
     [string]$Repository = $(if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { 'MoFeng2223/BrimDeck' }),
     # Actions artifacts have no release tag to download sensors from; ship the service beside the app instead.
-    [switch]$BundleSensors
+    [switch]$BundleSensors,
+    [string]$UpdatePublicKey = $env:BRIMDECK_UPDATE_PUBLIC_KEY
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -14,6 +15,10 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot 'PortablePackage.ps1')
 Push-Location $projectRoot
 try {
+    $hasPrivateKey = ![string]::IsNullOrWhiteSpace($env:BRIMDECK_UPDATE_SIGNING_KEY)
+    $hasPublicKey = ![string]::IsNullOrWhiteSpace($UpdatePublicKey)
+    if ($hasPrivateKey -and !$hasPublicKey) { throw 'A signing private key requires its matching public key.' }
+    if ($hasPublicKey -and !$hasPrivateKey -and !$BundleSensors) { throw 'The release feed requires its signing private key. Use -BundleSensors for an Actions artifact without publishing an update feed.' }
     if (!$ReleaseNotes) { $ReleaseNotes = "releases/$Version.md" }
     $notesPath = (Resolve-Path -LiteralPath $ReleaseNotes).Path
     $outputPath = [IO.Path]::GetFullPath($(if ([IO.Path]::IsPathRooted($OutputDirectory)) { $OutputDirectory } else { Join-Path $projectRoot $OutputDirectory }))
@@ -28,7 +33,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Sensor service publish failed.' }
     $sensors = Copy-Item -LiteralPath (Join-Path $sensorsPath 'BrimDeck.Sensors.exe') -Destination $outputPath -PassThru
     $sensorsSha256 = (Get-FileHash -LiteralPath $sensors.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    dotnet publish src/BrimDeck/BrimDeck.csproj -c Release -r win-x64 --self-contained true -p:Version=$Version -p:PublishSingleFile=false "-p:BrimDeckRepository=$Repository" -p:SensorsSha256=$sensorsSha256 -o $publishPath
+    dotnet publish src/BrimDeck/BrimDeck.csproj -c Release -r win-x64 --self-contained true -p:Version=$Version -p:PublishSingleFile=false "-p:BrimDeckRepository=$Repository" "-p:UpdateSigningPublicKey=$UpdatePublicKey" -p:SensorsSha256=$sensorsSha256 -o $publishPath
     if ($LASTEXITCODE -ne 0) { throw 'Application publish failed.' }
     if ($BundleSensors) { Copy-Item -LiteralPath $sensors.FullName -Destination $publishPath }
     $iscc = & (Join-Path $PSScriptRoot 'Get-InnoSetup.ps1')
@@ -51,6 +56,11 @@ try {
         }
     }
     [IO.File]::WriteAllText((Join-Path $outputPath 'update.json'), ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+    if ($hasPrivateKey) {
+        $env:BRIMDECK_UPDATE_PUBLIC_KEY = $UpdatePublicKey
+        dotnet run --project scripts/update-signing -c Release -- sign (Join-Path $outputPath 'update.json')
+        if ($LASTEXITCODE -ne 0) { throw 'Update manifest signing failed.' }
+    }
     Get-ChildItem -LiteralPath $outputPath -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object {
         '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
     } | Set-Content -LiteralPath (Join-Path $outputPath 'SHA256SUMS.txt') -Encoding utf8

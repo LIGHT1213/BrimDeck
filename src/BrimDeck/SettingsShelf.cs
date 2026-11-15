@@ -42,8 +42,8 @@ public partial class SettingsWindow
     {
         WatchShelf();
         var record = Toggle(Loc.T("记录剪贴板", "Record the clipboard"), S.ClipboardRecord, value => { Change(s => s.ClipboardRecord = value); ShowPage(_page); },
-            help: Loc.T("记录复制的文字和图片，保存在本机并加密存放，退出 BrimDeck 时清除。放进“常用”或设为一直保留的分类的内容不会清除。",
-                "Keeps the text and pictures you copy, encrypted on this computer, until BrimDeck exits. What is in Favorites or in a category set to keep stays."));
+            help: Loc.T("默认关闭，开启后才记录复制的文字和图片，保存在本机并加密存放，退出 BrimDeck 时清除。放进“常用”或设为一直保留的分类的内容不会清除。",
+                "Off by default. Enabling this records copied text and pictures, encrypted on this computer, until BrimDeck exits. What is in Favorites or in a category set to keep stays."));
         Group(record, _excludedHost = new Border { Child = ExcludedAppsContent() });
         SectionTitle(Loc.T("分类", "Categories"), help: () => Loc.T("一条内容可以放进多个分类。关闭“一直保留”的分类，其中的内容在退出 BrimDeck 时清除。单击筛选按钮设置自动放入的规则。拖动调整顺序。",
             "An entry can be in several categories. What is in a category with Keep off is cleared when BrimDeck exits. The filter button sets what goes in by itself. Drag to reorder."));

@@ -214,7 +214,7 @@ public sealed partial class SettingsWindow
         {
             bool custom = entry.QuotaSource == ProviderId.Custom;
             var site = Plain("site", Loc.T("站点地址", "Site address")); site.Text = entry.Site;
-            string usage = custom ? Loc.T("可选，作为 ctx.site 传给脚本", "Optional. Passed to the script as ctx.site")
+            string usage = custom ? Loc.T("联网脚本必填；请求仅限此站点的协议、域名和端口", "Required for network requests; only this scheme, host and port are allowed")
                 : Loc.T("末尾的 /、/v1 和控制台路径会自动去掉", "A trailing /, /v1 or console path is removed automatically");
             var hint = TextLine(usage, 12.5, TextTertiary);
             // An HTTP address the row does not allow (one saved by an earlier version included) is not read; the line under

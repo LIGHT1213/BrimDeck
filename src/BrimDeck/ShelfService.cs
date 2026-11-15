@@ -30,6 +30,7 @@ internal sealed class ShelfService : IDisposable
         _dispatcher = dispatcher;
         _save = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.FromMilliseconds(600) };
         _save.Tick += (_, _) => { _save.Stop(); Save(); };
+        TemporaryPictures.Clear(DragFolder);
         Load();
         // The history goes when BrimDeck exits; after an exit that did not clear it (a crash, a forced end) it goes now.
         if (!_unreadable && Shelf.History(Data) is { Count: > 0 } left) Remove(left, raise: false);
@@ -177,8 +178,7 @@ internal sealed class ShelfService : IDisposable
     {
         Remove(Shelf.History(Data), raise: false);
         Save();
-        try { if (Directory.Exists(DragFolder)) Directory.Delete(DragFolder, true); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+        TemporaryPictures.Clear(DragFolder);
     }
 
     // ---- Dragging a picture out ----
@@ -192,8 +192,7 @@ internal sealed class ShelfService : IDisposable
         try
         {
             Directory.CreateDirectory(DragFolder);
-            foreach (var old in Directory.EnumerateFiles(DragFolder).Where(file => DateTime.UtcNow - File.GetLastWriteTimeUtc(file) > TimeSpan.FromMinutes(10)).ToList())
-                try { File.Delete(old); } catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+            TemporaryPictures.Clear(DragFolder, DateTime.UtcNow - TimeSpan.FromMinutes(10));
             string path = Path.Combine(DragFolder, Loc.T("图片 ", "Picture ") + entry.Copied.ToLocalTime().ToString("yyyy-MM-dd HHmmss", System.Globalization.CultureInfo.InvariantCulture) + ".png");
             File.WriteAllBytes(path, png);
             return path;

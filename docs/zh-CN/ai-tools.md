@@ -107,7 +107,7 @@ OpenCode CLI 与桌面版共用同一个数据目录（`%USERPROFILE%\.local\sha
 
 - **密钥**：使用 Windows 的加密功能保存在本机，不写入设置文件。删除该列或更换配额来源时，密钥一并删除。
 - **站点地址**：填写站点首页地址即可。末尾的 `/v1`，以及直接粘贴的控制台页面路径，会自动去掉。请求会带上 API 密钥，所以站点地址须使用 HTTPS；HTTP 仅限本机地址（`localhost`、`127.0.0.1`、`[::1]`）。
-- **允许 HTTP**（New API、Sub2API、自定义）：默认关闭。站点自建在 NAS 上（例如 `http://192.168.x.x`）或通过 Tailscale 访问时，可以为这一来源打开。打开后，此来源的请求（包括自定义脚本发出的请求）可以使用 HTTP 访问任意地址，API 密钥会以明文发送，只在可信的网络中使用。未打开时，已保存的 HTTP 地址不会读取，状态显示“需要 HTTPS”。
+- **允许 HTTP**（New API、Sub2API、自定义）：默认关闭。站点自建在 NAS 上（例如 `http://192.168.x.x`）或通过 Tailscale 访问时，可以为这一来源打开。打开后，此来源的请求（包括自定义脚本发出的请求）可以使用 HTTP 访问配置的站点；自定义脚本仍限该站点的同源地址，API 密钥会以明文发送，只在可信的网络中使用。未打开时，已保存的 HTTP 地址不会读取，状态显示“需要 HTTPS”。
 - **测试连接**：立即读取一次，显示读取结果与耗时。
 - **读取失败时**：保留最近一次成功读取的数据，名称的悬停提示中会说明失败原因。
 
@@ -163,7 +163,7 @@ async function fetchUsage(ctx) {
 | 成员 | 说明 |
 | --- | --- |
 | `ctx.site`、`ctx.secrets.key` | 填写的站点地址与 API 密钥，未填写时为空字符串 |
-| `ctx.http.get(url, options)`、`ctx.http.post(url, options)` | 发送请求。`options` 可包含 `headers`、`timeout`（毫秒）与 `body`（仅 POST）。返回 `{ status, headers, text(), json() }`。地址须使用 HTTPS，规则与站点地址相同 |
+| `ctx.http.get(url, options)`、`ctx.http.post(url, options)` | 发送请求。`options` 可包含 `headers`、`timeout`（毫秒）与 `body`（仅 POST）。返回 `{ status, headers, text(), json() }`。自定义脚本必须配置站点，请求只限与它相同的协议、域名和端口；允许 HTTP 也不会放开其他来源，重定向仍被拒绝 |
 | `ctx.log(text)` | 写一行日志，在"测试连接"中显示 |
 | `ctx.language`、`ctx.now` | 界面语言（`"zh-CN"` 或 `"en-US"`）与本次读取的时间 |
 

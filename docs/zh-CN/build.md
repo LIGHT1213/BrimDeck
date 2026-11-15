@@ -29,3 +29,47 @@ GitHub Actions 构建会将当前仓库名写入程序，更新、传感器下�
 ```
 
 发布 Release 时省略 `-BundleSensors`，传感器程序会按原流程作为独立 Release 文件下载和校验。上游作者与许可证信息保持在原项目及安装程序中。
+
+## 本次修复的上传与运行
+
+本次修改先保存在云工作区 `/workspace/work/BrimDeck` 的本地 Git 提交中。GitHub 集成返回 `Resource not accessible by integration` / 403 时，需在 ChatGPT 的 GitHub 连接中把 `LIGHT1213/BrimDeck` 加入授权仓库，授予 Contents 与 Workflows 写入及 Actions 运行权限。
+
+也可以在你自己的终端进入含本次修复的仓库后，使用 GitHub CLI 的网页登录：
+
+```powershell
+gh auth login --hostname github.com --git-protocol https --web
+gh auth refresh --hostname github.com --scopes repo,workflow
+gh auth setup-git
+git push origin main
+gh workflow run build-windows.yml --repo LIGHT1213/BrimDeck --ref main
+gh run list --repo LIGHT1213/BrimDeck --workflow build-windows.yml --limit 5
+gh run watch RUN_ID --repo LIGHT1213/BrimDeck --exit-status
+gh run download RUN_ID --repo LIGHT1213/BrimDeck --dir artifacts/download
+```
+
+如果 `gh` 提示认证由 `GH_TOKEN` 或 `GITHUB_TOKEN` 管理，先在当前终端移除旧的只读环境变量，再网页登录；不要在聊天里发送令牌。PowerShell 可运行 `Remove-Item Env:GH_TOKEN, Env:GITHUB_TOKEN -ErrorAction SilentlyContinue`；Bash 可运行 `unset GH_TOKEN GITHUB_TOKEN`。
+
+如果需要把云工作区的提交移到本机，下载本次交付的 `BrimDeck-review-fixes.bundle`，在原 clone 中执行 `git fetch <bundle的路径> main:security-review`，然后执行 `git switch security-review`。检查后用 `git push origin security-review:main` 上传，随后运行上面的构建命令。无需强制推送或清理现有分支。
+
+无需配置签名密钥即可生成、安装和运行 exe；没有可信公钥时，应用只支持手动更新。
+
+## 可选：配置签名自动更新
+
+此 fork 使用 P-256 私钥签名 `update.json`，应用只信任编译时嵌入的 SPKI 公钥。公钥不从更新服务器下载。安装程序本身尚无 Authenticode 代码签名，因此 Windows 仍可能显示未知发布者。
+
+在本机 .NET 10 环境生成专用密钥，路径必须在仓库之外，文件不存在且其父目录已经存在：
+
+```powershell
+dotnet run --project scripts/update-signing -c Release -- keygen <仓库外的私钥文件绝对路径>
+```
+
+命令只打印公钥，私钥写入指定文件。将打印的 SPKI base64 设置为仓库 Actions Variable `UPDATE_SIGNING_PUBLIC_KEY`。正式发布时，可把 PEM 私钥设置为受审批保护的 `release` 环境 Secret `UPDATE_SIGNING_PRIVATE_KEY`；只有发布工作流会读取该私钥，手工 exe 构建不需要它。不要将私钥提交到 Git 或构建产物。
+
+更严格的分离方式是在可信本机离线签名：将私钥加载到当前进程的 `BRIMDECK_UPDATE_SIGNING_KEY`，公钥设置为 `BRIMDECK_UPDATE_PUBLIC_KEY`，然后运行：
+
+```powershell
+dotnet run --project scripts/update-signing -c Release -- sign <update.json的路径>
+dotnet run --project scripts/update-signing -c Release -- verify <update.json的路径> <SPKI公钥>
+```
+
+签名完成后清除私钥环境变量；更新 `SHA256SUMS.txt` 中清单文件的哈希。公钥变更必须通过已有可信签名授权的新版本或手工可信安装分发。发布权限与签名私钥同时失陷仍会破坏这条信任链。

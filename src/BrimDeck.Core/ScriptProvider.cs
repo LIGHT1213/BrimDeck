@@ -99,6 +99,14 @@ internal sealed class ScriptSession(HttpClient http, AppEntry entry, string secr
                 using var input = JsonDocument.Parse(argument);
                 var root = input.RootElement; var options = root.Get("options");
                 var uri = ProviderCatalog.ValidateUrl(root.Get("url").Text(), entry.AllowHttp);
+                if (entry.QuotaSource == ProviderId.Custom)
+                {
+                    // The API key may only be sent to the origin the user configured. An HTTP opt-in grants no other host.
+                    var site = ProviderCatalog.ValidateUrl(entry.Site, entry.AllowHttp);
+                    if (uri.Scheme != site.Scheme || uri.Port != site.Port || !uri.IdnHost.Equals(site.IdnHost, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException(Loc.T("自定义脚本只能请求所配置站点的同源地址（协议、域名和端口须相同）。",
+                            "Custom scripts may request only the configured site's origin (the same scheme, host and port)."));
+                }
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
                 timeout.CancelAfter(TimeSpan.FromMilliseconds(Math.Clamp(options.Get("timeout").Number() ?? 8000, 100, 10000)));
                 using var request = new HttpRequestMessage(method == "POST" ? HttpMethod.Post : HttpMethod.Get, uri);

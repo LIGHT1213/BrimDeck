@@ -22,7 +22,8 @@ public sealed record UpdateManifest(
     [property: JsonPropertyName("file")] string File,
     [property: JsonPropertyName("size")] long Size,
     [property: JsonPropertyName("sha256")] string Sha256,
-    [property: JsonPropertyName("portable"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UpdatePackage? Portable = null)
+    [property: JsonPropertyName("portable"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UpdatePackage? Portable = null,
+    [property: JsonPropertyName("signature"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Signature = null)
 {
     public const string FileName = "update.json";
     private const long MaxSize = 1L << 30;
@@ -73,22 +74,28 @@ public sealed class InstallerUpdateBackend : IAppUpdateBackend
     private readonly string _directory;
     private readonly string _appPath;
     private readonly Func<ProcessStartInfo, bool> _launch;
+    private readonly string? _signingPublicKey;
+    private readonly bool _requireSignature;
+    private readonly bool _hasTrustedKey;
     private UpdateManifest? _available;
 
     // appPath is the running executable; a portable copy replaces the folder it is in. betaManifest is the newest beta's
     // update.json, read only when betas are asked for.
     public InstallerUpdateBackend(HttpClient http, Uri manifest, Func<UpdateManifest, UpdatePackage, Uri> package, string currentVersion,
-        string directory, UpdateMode mode, Func<ProcessStartInfo, bool>? launch = null, string? appPath = null, Uri? betaManifest = null)
+        string directory, UpdateMode mode, Func<ProcessStartInfo, bool>? launch = null, string? appPath = null, Uri? betaManifest = null,
+        string? signingPublicKey = null, bool requireSignature = true)
     {
         _http = http; _manifest = manifest; _betaManifest = betaManifest; _package = package; _directory = directory; Mode = mode;
         CurrentVersion = currentVersion;
+        _signingPublicKey = signingPublicKey; _requireSignature = requireSignature;
+        _hasTrustedKey = ManifestSignatures.IsPublicKey(signingPublicKey);
         _appPath = appPath ?? Environment.ProcessPath ?? "";
         _launch = launch ?? (start => { using var process = Process.Start(start); return process is not null; });
     }
 
     public string CurrentVersion { get; }
     public UpdateMode Mode { get; }
-    public bool CanInstall => Mode != UpdateMode.None;
+    public bool CanInstall => Mode != UpdateMode.None && (!_requireSignature || _hasTrustedKey);
     public string RestartFailureFile => Path.Combine(_directory, PortableUpdate.FailureFile);
 
     // Read once at startup. A pending package that is not newer than the running version was applied or is stale.
@@ -154,7 +161,10 @@ public sealed class InstallerUpdateBackend : IAppUpdateBackend
         timeout.CancelAfter(TimeSpan.FromSeconds(30));
         using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) throw new UpdateCheckException(response.StatusCode, RetryAfter(response.Headers.RetryAfter));
-        return UpdateManifest.Parse(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false));
+        var manifest = UpdateManifest.Parse(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false));
+        // A build without a trust key can display release information, but cannot download, restore or execute an update.
+        if (_requireSignature && !string.IsNullOrWhiteSpace(_signingPublicKey)) ManifestSignatures.Verify(manifest, _signingPublicKey);
+        return manifest;
     }
 
     // Retry-After is either a number of seconds or a date.
@@ -164,6 +174,7 @@ public sealed class InstallerUpdateBackend : IAppUpdateBackend
     private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(30);
     public async Task DownloadAsync(AppRelease release, Action<int> progress, CancellationToken cancellation)
     {
+        if (!CanInstall) throw new InvalidOperationException("Signed automatic updates are not configured for this build.");
         var manifest = _available is { } available && available.Version == release.Version ? available
             : throw new InvalidOperationException("Update selection changed.");
         // A release published before portable packages existed has nothing a portable copy can apply.
@@ -239,6 +250,7 @@ public sealed class InstallerUpdateBackend : IAppUpdateBackend
             var path = Path.Combine(_directory, PendingFile);
             if (!File.Exists(path)) return null;
             var manifest = UpdateManifest.Parse(File.ReadAllText(path));
+            if (_requireSignature) ManifestSignatures.Verify(manifest, _signingPublicKey);
             if (manifest.Package(Mode) is not { } package) return null;
             var file = new FileInfo(Path.Combine(_directory, package.File));
             return IsNewer(manifest) && file.Exists && file.Length == package.Size ? manifest : null;

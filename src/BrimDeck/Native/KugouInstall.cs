@@ -86,6 +86,7 @@ internal static class KugouInstall
     // Enables full control: closes KuGou, changes the file and starts KuGou again when it was running, or when start asks.
     public static async Task EnableAsync(bool start, CancellationToken token)
     {
+        PlayerDebugging.DemandPermission();
         var location = Changeable();
         bool running = RunningPaths().Any();
         await CloseAsync(location, token).ConfigureAwait(false);

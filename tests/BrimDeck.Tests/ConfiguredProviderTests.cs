@@ -63,7 +63,7 @@ internal static class ConfiguredProviderTests
         var lan = await providers.TestAsync(lanEntry);
         check("A saved HTTP site is read once the row allows HTTP", handler.Calls.Count > before && lan.Snapshot.LiveQuota);
         int afterLan = handler.Calls.Count;
-        var lanScript = new AppEntry { QuotaSource = ProviderId.Custom, AllowHttp = true, Script = plainScript.Script };
+        var lanScript = new AppEntry { QuotaSource = ProviderId.Custom, Site = "http://example.test", AllowHttp = true, Script = plainScript.Script };
         var lanScripted = await providers.TestAsync(lanScript);
         check("A script's HTTP request is sent once the row allows HTTP", handler.Calls.Count == afterLan + 1 && lanScripted.Snapshot.LiveQuota);
         var strict = lanEntry.Copy(); strict.AllowHttp = false;
@@ -249,6 +249,7 @@ internal static class ConfiguredProviderTests
         handler.Respond = _ => new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = new StringContent("""{"error":{"message":"User not found.","code":401}}""") };
         check("A rejected OpenRouter key explains what to check", (await providers.TestAsync(entry)).Snapshot is { LiveQuota: false, StatusLabel: "密钥无效" } routerRejected && routerRejected.Status.Contains("OpenRouter"));
         entry.QuotaSource = ProviderId.Custom;
+        entry.Site = "https://example.test";
         entry.Script = """async function fetchUsage(ctx) { const [a,b] = await Promise.all([ctx.http.get("https://example.test/a"),ctx.http.post("https://example.test/b",{body:{value:1}})]); ctx.log(ctx.secrets.key); return {metrics:[{kind:"balance",label:"余额",amount:a.json().balance+b.json().balance,currency:"USD"}]}; }""";
         handler.Respond = _ => Reply("""{"balance":2}""");
         var custom = await providers.TestAsync(entry);

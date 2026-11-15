@@ -65,7 +65,7 @@ internal static class PortableUpdateTests
         var app = Path.Combine(root, "app 目录", "BrimDeck.exe");
         var launches = new List<ProcessStartInfo>();
         InstallerUpdateBackend Backend() => new(http, ManifestUri, (m, p) => new Uri($"https://updates.test/v{m.Version}/{p.File}"), "0.1.0", directory,
-            UpdateMode.Portable, start => { launches.Add(start); return true; }, app);
+            UpdateMode.Portable, start => { launches.Add(start); return true; }, app, requireSignature: false);
 
         var backend = Backend();
         var release = await backend.CheckAsync(CancellationToken.None);

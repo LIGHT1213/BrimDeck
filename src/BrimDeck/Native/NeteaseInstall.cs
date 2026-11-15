@@ -39,6 +39,7 @@ internal static class NeteaseInstall
     // Enables full control: closes NetEase Cloud Music, changes the file and starts it again when it was running, or when start asks.
     public static async Task EnableAsync(bool start, CancellationToken token)
     {
+        PlayerDebugging.DemandPermission();
         var location = Changeable();
         bool running = RunningPaths().Any();
         await CloseAsync(location, token).ConfigureAwait(false);

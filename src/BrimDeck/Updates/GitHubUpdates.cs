@@ -14,6 +14,9 @@ internal static class GitHubUpdates
     // Must match AppId in installer/BrimDeck.iss. Inno Setup registers the uninstall entry as "<AppId>_is1".
     public const string InstallerAppId = "{9D9AD6ED-CF62-4527-A587-6DBE94A74B9E}";
     public static string BuildVersion => ApplicationVersion.Current;
+    private static string? SigningPublicKey => typeof(GitHubUpdates).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(attribute => attribute.Key == "UpdateSigningPublicKey")?.Value;
+    public static bool SignedUpdatesEnabled => ManifestSignatures.IsPublicKey(SigningPublicKey);
     private static readonly HttpClient Http = CreateClient();
 
     // /releases/latest skips drafts and prereleases. The release workflow copies each beta's update.json to the beta-channel
@@ -23,8 +26,9 @@ internal static class GitHubUpdates
         new Uri(RepositoryUrl + "/releases/download/beta-channel/" + UpdateManifest.FileName));
 
     internal static InstallerUpdateBackend Create(Uri manifest, Func<UpdateManifest, UpdatePackage, Uri> package, HttpClient http, string appId, string dataDirectory,
-        Uri? betaManifest = null) =>
-        new(http, manifest, package, BuildVersion, Path.Combine(dataDirectory, "updates"), Mode(appId, AppContext.BaseDirectory), betaManifest: betaManifest);
+        Uri? betaManifest = null, bool requireSignature = true) =>
+        new(http, manifest, package, BuildVersion, Path.Combine(dataDirectory, "updates"), Mode(appId, AppContext.BaseDirectory), betaManifest: betaManifest,
+            signingPublicKey: SigningPublicKey, requireSignature: requireSignature);
 
     // A copy the installer registered updates through the installer; a portable copy replaces its own files.
     internal static UpdateMode Mode(string appId, string directory) =>

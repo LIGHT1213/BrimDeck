@@ -17,7 +17,8 @@ try
 {
     var data = Path.Combine(testRoot, "user-data"); var store = new SettingsStore(data);
     using var http = new HttpClient(new FeedHandler(Path.Combine(testRoot, "feed")));
-    var backend = GitHubUpdates.Create(new Uri("https://feed.test/" + UpdateManifest.FileName), (_, package) => new Uri("https://feed.test/" + package.File), http, appId, data);
+    // This feed is a test-owned in-memory handler. Real GitHub feeds always require publisher signatures.
+    var backend = GitHubUpdates.Create(new Uri("https://feed.test/" + UpdateManifest.FileName), (_, package) => new Uri("https://feed.test/" + package.File), http, appId, data, requireSignature: false);
     var updates = new AppUpdates(backend, data);
     var portable = backend.Mode == UpdateMode.Portable;
     if (!updates.CanInstall) throw new Exception("Installed or portable copy was not recognized: " + AppContext.BaseDirectory);

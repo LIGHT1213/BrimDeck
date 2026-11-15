@@ -77,6 +77,7 @@ try
     await AppUpdateTests.Run(root, Check);
     ReleaseHistoryTests.Run(root, Check);
     await InstallerUpdateTests.Run(root, Check);
+    await ManifestSignatureTests.Run(root, Check);
     await PortableUpdateTests.Run(root, Check);
     PortableRollbackTests.Run(Path.Combine(root, "portable-rollback"), Check);
     SettingsMigrationTests.Run(root, Check);
@@ -85,6 +86,7 @@ try
     FullscreenRuleTests.Run(Check);
     LanguageTests.Run(root, Check);
     await ConfiguredProviderTests.Run(Check);
+    await SecurityRegressionTests.Run(root, Check);
     await ZCodeUsageTests.Run(root, Check);
     await DshUsageTests.Run(root, Check);
     await KimiUsageTests.Run(root, Check);

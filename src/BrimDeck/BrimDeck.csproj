@@ -27,6 +27,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <BrimDeckRepository Condition="'$(BrimDeckRepository)' == '' and '$(GITHUB_REPOSITORY)' != ''">$(GITHUB_REPOSITORY)</BrimDeckRepository>
     <BrimDeckRepository Condition="'$(BrimDeckRepository)' == ''">MoFeng2223/BrimDeck</BrimDeckRepository>
+    <UpdateSigningPublicKey Condition="'$(UpdateSigningPublicKey)' == ''">$(BRIMDECK_UPDATE_PUBLIC_KEY)</UpdateSigningPublicKey>
     <!-- A panel that mostly sits idle: no background collection thread, and a collector that compacts and returns memory rather
          than keeping room to grow into (see App.Memory.cs). -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
@@ -44,6 +45,7 @@
   <ItemGroup>
     <!-- Fork builds must read updates and sensor downloads from the repository that produced them. -->
     <AssemblyMetadata Include="UpdateRepository" Value="$(BrimDeckRepository)" />
+    <AssemblyMetadata Include="UpdateSigningPublicKey" Value="$(UpdateSigningPublicKey)" Condition="'$(UpdateSigningPublicKey)' != ''" />
   </ItemGroup>
 
   <!-- The release build publishes the sensor service first and passes its SHA-256 here: the copy downloaded when the user turns

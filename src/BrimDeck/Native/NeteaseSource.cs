@@ -281,6 +281,8 @@ internal sealed class NeteaseSource : IMediaPlayerConnection
     // A quiet request leaves no error behind: its caller only shows that it is in progress.
     public async Task<bool> EnableFullControlAsync(bool quiet = false)
     {
+        try { PlayerDebugging.DemandPermission(); }
+        catch (InvalidOperationException ex) { if (!quiet) Error = ex.Message; return false; }
         if (Interlocked.CompareExchange(ref _restarting, 1, 0) != 0) return false;
         var owner = _process?.IsAlive() == true ? _process : null;
         var beforeRestart = owner is null ? null : Snapshot;

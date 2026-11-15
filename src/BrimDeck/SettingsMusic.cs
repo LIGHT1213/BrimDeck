@@ -261,13 +261,8 @@ public sealed partial class SettingsWindow
         // Without full control NetEase is controlled through its system media session, an option in its own settings.
         PlayerNote(Loc.T("在网易云音乐“设置 › 系统”中打开“开启 SMTC”，即可控制播放。",
             "Turn on \"开启 SMTC\" in NetEase Cloud Music's 设置 › 系统 to control playback."));
-        Group(Toggle(Loc.T("始终显示“启用完整控制”按钮", "Always show \"Enable full control\""), S.NeteaseFullControlEntry, v => Change(s => s.NeteaseFullControlEntry = v), S.MusicPage,
-            Loc.T("在音乐页面右上角的来源菜单末尾固定显示“网易云音乐 · 完整控制”，以便随时启用完整控制。启用完整控制后，可以在面板中拖动网易云音乐的播放进度、切换播放模式，以及喜欢或取消喜欢当前歌曲。",
-                "Keeps \"NetEase Cloud Music · Full control\" at the end of the source menu at the top right of the music page, so full control can be enabled at any time. With full control, NetEase Cloud Music's playback position can be dragged in the panel, its playback mode switched, and the current song liked or unliked.")),
-            Toggle(Loc.T("启动后自动启用完整控制", "Enable full control when it starts"), S.NeteaseAutoFullControl, NeteaseAutoFullControl, S.MusicPage,
-                Loc.T("网易云音乐以普通方式启动后，BrimDeck 会自动将它重启一次，改为完整控制，通常需要几秒钟。",
-                    "When NetEase Cloud Music is started the normal way, BrimDeck restarts it once with full control, which usually takes a few seconds.")),
-            NeteaseSwitch());
+        PlayerNote(PlayerDebugging.DisabledReason);
+        Group(NeteaseSwitch());
         SectionTitle(Loc.T("酷狗音乐", "KuGou Music"));
         // Without full control KuGou is seen only through its system media session, an option in KuGou's own settings.
         PlayerNote(Loc.T("在酷狗“设置 › 常规设置 › 播放”中勾选“支持系统播放控件，如锁屏界面”，即可显示曲目并控制播放。",
@@ -346,13 +341,13 @@ public sealed partial class SettingsWindow
     private FrameworkElement KugouSwitch()
     {
         var app = (App)Application.Current;
-        string title = Loc.T("始终启用完整控制", "Always enable full control");
+        string title = Loc.T("旧版调试补丁（仅可关闭）", "Legacy debugging patch (turn off only)");
         // The file is read when the page opens: here for the switch, and by media to change it again when an update left it
         // original while the setting is on. A file another tool or an earlier change left changed is on as well: KuGou starts
         // with full control either way.
         var read = app.Media?.KugouState ?? Native.KugouInstall.State();
         app.Media?.CheckKugouInstall(now: true);
-        bool changed = read == LibcefPatchState.Patched;
+        bool changed = read is LibcefPatchState.Patched or LibcefPatchState.Partial;
         var toggle = new CheckBox { Style = (Style)FindResource("SettingsToggle"), IsChecked = S.KugouFullControl || changed, VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetName(toggle, title);
         var note = TextLine("", 11, TextTertiary); note.TextWrapping = TextWrapping.Wrap;
@@ -361,6 +356,7 @@ public sealed partial class SettingsWindow
         async Task Switch(bool on)
         {
             if (quiet) return;
+            if (on) { Set(false); return; }
             if (on && new KugouControlWindow(S.Theme) { Owner = this }.ShowDialog() != true) { Set(false); return; }
             busy = true; failure = null; Update();
             try
@@ -391,7 +387,7 @@ public sealed partial class SettingsWindow
             var state = media is not null ? media.KugouState ?? read : Native.KugouInstall.State();
             bool working = busy || media is { RestartingKugou: true };
             bool supported = state is LibcefPatchState.Original or LibcefPatchState.Patched or LibcefPatchState.Partial;
-            toggle.IsEnabled = supported && !working && S.MusicPage;
+            toggle.IsEnabled = state is LibcefPatchState.Patched or LibcefPatchState.Partial && !working && S.MusicPage;
             string? error = working ? null : failure ?? media?.KugouError;
             // The port follows the file only from KuGou's next start.
             bool pending = supported && (state == LibcefPatchState.Patched) != (media is { KugouFullControl: true }) && Native.KugouInstall.Running();
@@ -405,10 +401,7 @@ public sealed partial class SettingsWindow
         }
         void Changed() => Dispatcher.BeginInvoke(Update);
         Update();
-        var row = Row(title, toggle, note, () => Loc.T("与上面勾选酷狗选项的方式相比，还会显示实际播放进度和更清晰的封面，歌词随进度滚动。\n"
-            + "启用时会修改酷狗的 libcef.dll，之后酷狗每次启动都是完整控制模式。",
-            "Compared with checking the KuGou option above, the actual progress and a sharper cover are also shown, and the lyrics follow the song.\n"
-            + "Turning it on changes KuGou's libcef.dll; KuGou then starts in full control mode every time."));
+        var row = Row(title, toggle, note, () => PlayerDebugging.DisabledReason);
         row.Loaded += (_, _) => app.MediaChanged += Changed;
         row.Unloaded += (_, _) => app.MediaChanged -= Changed;
         return row;
@@ -419,11 +412,11 @@ public sealed partial class SettingsWindow
     private FrameworkElement NeteaseSwitch()
     {
         var app = (App)Application.Current;
-        string title = Loc.T("始终启用完整控制", "Always enable full control");
+        string title = Loc.T("旧版调试补丁（仅可关闭）", "Legacy debugging patch (turn off only)");
         // Read when the page opens, as KuGou's.
         var read = app.Media?.NeteasePatchState ?? Native.NeteaseInstall.State();
         app.Media?.CheckNeteaseFile();
-        bool changed = read == LibcefPatchState.Patched;
+        bool changed = read is LibcefPatchState.Patched or LibcefPatchState.Partial;
         var toggle = new CheckBox { Style = (Style)FindResource("SettingsToggle"), IsChecked = S.NeteaseFullControl || changed, VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetName(toggle, title);
         var note = TextLine("", 11, TextTertiary); note.TextWrapping = TextWrapping.Wrap;
@@ -432,6 +425,7 @@ public sealed partial class SettingsWindow
         async Task Switch(bool on)
         {
             if (quiet) return;
+            if (on) { Set(false); return; }
             if (on && new NeteaseFileControlWindow(S.Theme) { Owner = this }.ShowDialog() != true) { Set(false); return; }
             busy = true; failure = null; Update();
             try
@@ -465,7 +459,7 @@ public sealed partial class SettingsWindow
             // With media on, a null state there may only mean the source has not read the file yet; media.NeteaseInstalled
             // answers whether it is installed. With media off, the state read above is null only when not installed.
             bool installed = media is not null ? media.NeteaseInstalled : state is not null;
-            toggle.IsEnabled = (supported || state is null && installed) && !working && S.MusicPage;
+            toggle.IsEnabled = state is LibcefPatchState.Patched or LibcefPatchState.Partial && !working && S.MusicPage;
             string? error = working ? null : failure;
             // The port follows the file only from NetEase's next start.
             bool pending = supported && (state == LibcefPatchState.Patched) != (media is { NeteaseFullControl: true }) && Native.NeteaseInstall.Running();
@@ -479,8 +473,7 @@ public sealed partial class SettingsWindow
         }
         void Changed() => Dispatcher.BeginInvoke(Update);
         Update();
-        var row = Row(title, toggle, note, () => Loc.T("会修改网易云的 libcef.dll，之后网易云每次启动都是完整控制模式。",
-            "Changes NetEase Cloud Music's libcef.dll; it then starts in full control mode every time."));
+        var row = Row(title, toggle, note, () => PlayerDebugging.DisabledReason);
         row.Loaded += (_, _) => app.MediaChanged += Changed;
         row.Unloaded += (_, _) => app.MediaChanged -= Changed;
         return row;

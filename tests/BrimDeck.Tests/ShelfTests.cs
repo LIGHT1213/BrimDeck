@@ -160,10 +160,10 @@ internal static class ShelfTests
         check("Shelf layout: the search box is 36 % of the width within 180 and 280, and the details have a side column from 560",
             ShelfLayout.SearchWidth(440) == 180 && ShelfLayout.SearchWidth(620) == 223 && ShelfLayout.SearchWidth(1200) == 280 && ShelfLayout.DetailSide(560) && !ShelfLayout.DetailSide(559));
 
-        // Settings: the page is on and records from the start; the page has its own size; the count part shows only with the page.
+        // The page is available, while recording requires an explicit choice.
         var settings = new DeckSettings();
-        check("Shelf settings: the page is shown and recording is on",
-            settings.ClipboardPage && settings.ClipboardRecord && DeckPages.Order.Contains(DeckPage.Clipboard));
+        check("Shelf settings: the page is shown and recording is off until enabled",
+            settings.ClipboardPage && !settings.ClipboardRecord && DeckPages.Order.Contains(DeckPage.Clipboard));
         check("Shelf settings: a settings file that turned recording off keeps it off",
             !System.Text.Json.JsonSerializer.Deserialize<DeckSettings>("{\"ClipboardRecord\":false}")!.ClipboardRecord);
         var dragOut = new DeckSettings { TransferDragOut = (TransferDragOut)7 };

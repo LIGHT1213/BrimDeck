@@ -1,3 +1,5 @@
+> This fork restricts custom scripts to the configured origin, disables clipboard recording by default and new player debugging/DLL patches, and requires publisher signatures for automatic installation. See the [review and changes (Chinese)](docs/zh-CN/security-review.md) and [Windows build guide](docs/zh-CN/build.md). The screenshots and feature descriptions below retain upstream context.
+
 <div align="center">
 
 <a href="README.md"><img src="https://img.shields.io/badge/English-0A84FF?style=for-the-badge" alt="English"></a>

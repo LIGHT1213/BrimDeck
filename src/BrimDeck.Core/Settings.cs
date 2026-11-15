@@ -577,11 +577,11 @@ public sealed class DeckSettings
     // The system monitor page; it reads the system only while it is open on screen.
     public bool MonitorPage { get; set; } = true;
     public double MonitorWidth { get; set; } = MonitorSizes.Default.Width;
-    // The clipboard and file transfer page. The clipboard is recorded from the start; a settings file saved before keeps its choice.
+    // Recording requires explicit opt-in; existing settings keep the user's saved choice.
     public bool ClipboardPage { get; set; } = true;
     public double ClipboardWidth { get; set; } = ShelfSizes.Default.Width;
     public double ClipboardHeight { get; set; } = ShelfSizes.Default.Height;
-    public bool ClipboardRecord { get; set; } = true;
+    public bool ClipboardRecord { get; set; }
     // Applications whose copies are not recorded: the executable's path, or a process name (ClipboardExclusions).
     public List<string> ClipboardExcluded { get; set; } = [];
     public TransferDragOut TransferDragOut { get; set; } = TransferDragOut.Copy;
@@ -774,6 +774,7 @@ public sealed class DeckSettings
     public void Normalize()
     {
         // Saved per-theme choices: one entry per theme id as the panel names it, each with its lists present.
+        NeteaseFullControlEntry = NeteaseAutoFullControl = NeteaseFullControl = KugouFullControl = false;
         ThemeChoices = (ThemeChoices ?? []).Where(pair => pair.Value is not null && pair.Key.Length > 0).GroupBy(pair => PanelThemes.NormalizeId(pair.Key))
             .ToDictionary(group => group.Key, group =>
             {

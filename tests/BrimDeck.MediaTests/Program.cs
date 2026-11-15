@@ -28,6 +28,7 @@ var root = Path.Combine(Path.GetTempPath(), "BrimDeck-MediaTests-" + Guid.NewGui
 Directory.CreateDirectory(root);
 try
 {
+    PlayerPatchPolicyTests.Run(root, Check);
     byte[] table = Enumerable.Range(0, 256).Select(i => (byte)i).ToArray(); NeteaseLog.Decode(table);
     byte[] inverse = new byte[256]; for (int i = 0; i < 256; i++) inverse[table[i]] = (byte)i;
     byte[] Encode(string s) => Encoding.UTF8.GetBytes(s).Select(b => inverse[b]).ToArray();

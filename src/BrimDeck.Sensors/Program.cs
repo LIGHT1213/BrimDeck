@@ -79,9 +79,7 @@ internal sealed class SensorService : ServiceBase
                 lastAsked = clock.Elapsed.TotalSeconds;
                 if (reader?.Status is null or SensorStatus.NoDriver && lastAsked - builtAt >= RetrySeconds) { reader?.Dispose(); reader = Reader(); builtAt = lastAsked; }
                 var reply = Encoding.UTF8.GetBytes((reader?.Read(lastAsked) ?? new SensorReport(SensorStatus.Failed)).Format());
-                pipe.Write(reply);
-                pipe.Flush();
-                pipe.WaitForPipeDrain();
+                PipeReply.WriteAsync(pipe, reply, _stop.Token).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException) { if (_stop.IsCancellationRequested) break; }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException) { if (_stop.IsCancellationRequested) break; }

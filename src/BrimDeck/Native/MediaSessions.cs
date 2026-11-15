@@ -80,7 +80,7 @@ internal sealed class MediaSessions : IDisposable
     public MediaTrack? Current { get; private set; }
     public BitmapSource? Cover { get; private set; }
     public string? Error { get; private set; }
-    public bool CanEnableFullControl => Current?.IsNeteaseLog == true && Netease?.ProcessId is not null;
+    public bool CanEnableFullControl => false;
     public bool RestartingNetease => Netease?.Restarting == true;
     public bool NeteaseInstalled => Netease?.Installed == true;
     public bool NeteaseRunning => Netease?.ProcessId is not null;
@@ -131,8 +131,7 @@ internal sealed class MediaSessions : IDisposable
     public bool KugouFullControl => Kugou?.Ready == true;
     // Why the last attempt to enable full control failed; cleared by the next attempt.
     public string? KugouError { get; private set; }
-    public bool CanEnableKugouFullControl => KugouState is LibcefPatchState.Original or LibcefPatchState.Patched or LibcefPatchState.Partial
-        && Current is { IsKugou: true } current && _routes.TryGetValue(current.Id, out var route) && route.Connection is null;
+    public bool CanEnableKugouFullControl => false;
     public bool KugouFullControlWanted
     {
         get => _kugouAuto;

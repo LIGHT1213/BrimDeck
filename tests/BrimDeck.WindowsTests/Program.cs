@@ -54,6 +54,7 @@ internal static class Program
                 PowerChecks.Run(Check);
             }
             SensorGuardChecks.Run(Check);
+            Task.Run(() => SensorPipeTests.Run(Check)).GetAwaiter().GetResult();
             FontFollowTests.Run(Check);
 
             return Finish();
